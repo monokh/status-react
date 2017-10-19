@@ -20,6 +20,7 @@
             status-im.ui.screens.wallet.choose-recipient.events
             [re-frame.core :refer [dispatch reg-fx reg-cofx] :as re-frame]
             [status-im.native-module.core :as status]
+            [status-im.ui.components.react :as react]
             [status-im.ui.components.permissions :as permissions]
             [status-im.constants :refer [console-chat-id]]
             [status-im.data-store.core :as data-store]
@@ -217,12 +218,12 @@
     (let [network' (or network (get app-db :network))]
       {::init-store nil
        :db          (assoc app-db
-                      :accounts/current-account-id nil
-                      :contacts/contacts {}
-                      :network-status network-status
-                      :status-module-initialized? (or platform/ios? js/goog.DEBUG status-module-initialized?)
-                      :status-node-started? status-node-started?
-                      :network network')})))
+                           :accounts/current-account-id nil
+                           :contacts/contacts {}
+                           :network-status network-status
+                           :status-module-initialized? (or platform/ios? js/goog.DEBUG status-module-initialized?)
+                           :status-node-started? status-node-started?
+                           :network network')})))
 
 (register-handler-db
   :initialize-account-db
@@ -349,8 +350,8 @@
 (register-handler-fx
   :app-state-change
   (fn [_ [_ state]]))
-    ;; TODO(rasom): let's not remove this handler, it will be used for
-    ;; pausing node on entering background on android
+;; TODO(rasom): let's not remove this handler, it will be used for
+;; pausing node on entering background on android
 
 
 (register-handler-fx
@@ -365,17 +366,17 @@
                 (fn []
                   (let [watch-id (atom nil)]
                     (.getCurrentPosition
-                      navigator.geolocation
+                      react/geolocation
                       #(dispatch [:update-geolocation (js->clj % :keywordize-keys true)])
                       #(dispatch [:update-geolocation (js->clj % :keywordize-keys true)])
                       (clj->js {:enableHighAccuracy true :timeout 20000 :maximumAge 1000}))
                     (when platform/android?
                       (reset! watch-id
                               (.watchPosition
-                                navigator.geolocation
+                                react/geolocation
                                 #(do
                                    (.clearWatch
-                                     navigator.geolocation
+                                     react/geolocation
                                      @watch-id)
                                    (dispatch [:update-geolocation (js->clj % :keywordize-keys true)])))))))]}))
 
