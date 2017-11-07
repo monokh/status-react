@@ -109,10 +109,15 @@
 
 (reg-fx
   :http-get
-  (fn [{:keys [url success-event-creator failure-event-creator]}]
-    (utils/http-get url
-                    #(dispatch (success-event-creator %))
-                    #(dispatch (failure-event-creator %)))))
+  (fn [{:keys [url response-validator success-event-creator failure-event-creator]}]
+    (if response-validator
+      (utils/http-get url
+                      response-validator
+                      #(dispatch (success-event-creator %))
+                      #(dispatch (failure-event-creator %)))
+      (utils/http-get url
+                      #(dispatch (success-event-creator %))
+                      #(dispatch (failure-event-creator %))))))
 
 (reg-fx
   ::init-store

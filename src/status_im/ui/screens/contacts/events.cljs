@@ -17,6 +17,7 @@
             [status-im.utils.gfycat.core :refer [generate-gfy]]
             [status-im.i18n :refer [label]]
             [status-im.ui.screens.contacts.navigation]
+            [status-im.commands.events.loading :as loading-events]
             [cljs.spec.alpha :as spec]))
 
 ;;;; COFX
@@ -241,7 +242,8 @@
   (for [[id {:keys [bot-url]}] default-contacts
         :let [id' (clojure.core/name id)]
         :when bot-url]
-    [:load-commands! id']))
+    (do (log/debug "Parsing jail for: " bot-url)
+        [:load-commands! id'])))
 
 (defn- prepare-add-contacts-to-groups-events [contacts default-contacts]
   (let [groups (for [[id {:keys [groups]}] default-contacts
