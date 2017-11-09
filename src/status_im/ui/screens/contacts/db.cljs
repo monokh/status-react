@@ -28,8 +28,8 @@
 (spec/def :contact/last-updated (spec/nilable int?))
 (spec/def :contact/last-online (spec/nilable int?))
 (spec/def :contact/pending? boolean?)
-(spec/def :contact/mixable? boolean?)
 (spec/def :contact/unremovable? boolean?)
+(spec/def :contact/hide-contact? boolean?)
 
 (spec/def :contact/dapp? boolean?)
 (spec/def :contact/dapp-url (spec/nilable string?))
@@ -39,6 +39,7 @@
 (spec/def :contact/commands (spec/nilable (spec/map-of keyword? seq?)))
 (spec/def :contact/responses (spec/nilable (spec/map-of keyword? seq?)))
 (spec/def :contact/commands-loaded? (spec/nilable boolean?))
+(spec/def :contact/commands-loaded-events (spec/nilable seq?))
 (spec/def :contact/subscriptions (spec/nilable map?))
 ;true when contact added using status-dev-cli
 (spec/def :contact/debug? boolean?)
@@ -54,8 +55,8 @@
              :contact/status
              :contact/last-updated
              :contact/last-online
-             :contact/pending?
-             :contact/mixable?
+             :contact/pending? 
+             :contact/hide-contact?
              :contact/scope
              :contact/unremovable?
              :contact/dapp?
@@ -64,6 +65,7 @@
              :contact/bot-url
              :contact/global-command
              :contact/commands-loaded?
+             :contact/commands-loaded-events
              :contact/commands
              :contact/responses
              :contact/debug?

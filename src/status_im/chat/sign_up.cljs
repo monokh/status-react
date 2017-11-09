@@ -162,5 +162,4 @@
    :photo-path        const/console-chat-id
    :dapp?             true
    :unremovable?      true
-   :bot-url           "local://console-bot"
-   :dapp-hash         858845357})
+   :bot-url           "local://console-bot"})

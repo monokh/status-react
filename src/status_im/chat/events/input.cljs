@@ -55,9 +55,7 @@
   and returns new db with up-to date suggestions"
   [{:keys [chats current-chat-id] :as db}]
   (let [chat-text       (str/trim (or (get-in chats [current-chat-id :input-text]) ""))
-        requests        (->> (commands-model/get-possible-requests db)
-                             (remove (fn [{:keys [type]}]
-                                       (= type :grant-permissions))))
+        requests        (commands-model/requests-for-chat db current-chat-id) 
         commands        (commands-model/commands-for-chat db current-chat-id)
         {:keys [dapp?]} (get-in db [:contacts/contacts current-chat-id])
         ;; TODO(janherich) surely there is a better place to merge in possible commands/request/subscriptions into current chat
@@ -149,16 +147,13 @@
 (defn load-chat-parameter-box
   "Returns fx for loading chat parameter box for active chat"
   [{:keys [current-chat-id bot-db] :accounts/keys [current-account-id] :as db}
-   {:keys [name scope type bot owner-id] :as command}]
+   {:keys [name scope-bitmask type bot owner-id] :as command}]
   (let [parameter-index (input-model/argument-position db)]
     (when (and command (> parameter-index -1))
       (let [data    (get-in db [:local-storage current-chat-id])
             bot-db  (get bot-db owner-id)
             path    [(if (= :command type) :commands :responses)
-                     [name
-                      (if (= :command type)
-                        (commands-model/scope->bit-mask scope)
-                        0)]
+                     [name scope-bitmask]
                      :params
                      parameter-index
                      :suggestions]
@@ -301,11 +296,10 @@
         request-data    {:message-id   message-id
                          :chat-id      chat-id
                          :jail-id      (or owner-id jail-id)
-                         :content      {:command (:name command)
-                                        :scope   (when-not (:to-message-id metadata)
-                                                   (:scope command))
-                                        :params  params
-                                        :type    (:type command)}
+                         :content      {:command       (:name command)
+                                        :scope-bitmask (:scope-bitmask command)
+                                        :params        params
+                                        :type          (:type command)}
                          :on-requested (fn [jail-response]
                                          (event-after-creator command-message jail-response))}]
     (commands-events/request-command-message-data db request-data data-type)))

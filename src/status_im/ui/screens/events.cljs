@@ -2,7 +2,7 @@
   (:require status-im.bots.events
             status-im.chat.handlers
             status-im.commands.handlers.jail
-            status-im.commands.handlers.loading
+            status-im.commands.events.loading
             status-im.commands.handlers.debug
             status-im.network.handlers
             status-im.protocol.handlers
@@ -107,17 +107,25 @@
                      #(dispatch (success-event-creator %))
                      #(dispatch (failure-event-creator %)))))
 
+(defn- http-get [{:keys [url response-validator success-event-creator failure-event-creator]}]
+  (if response-validator
+    (utils/http-get url
+                    response-validator
+                    #(dispatch (success-event-creator %))
+                    #(dispatch (failure-event-creator %)))
+    (utils/http-get url
+                    #(dispatch (success-event-creator %))
+                    #(dispatch (failure-event-creator %)))))
+
 (reg-fx
   :http-get
-  (fn [{:keys [url response-validator success-event-creator failure-event-creator]}]
-    (if response-validator
-      (utils/http-get url
-                      response-validator
-                      #(dispatch (success-event-creator %))
-                      #(dispatch (failure-event-creator %)))
-      (utils/http-get url
-                      #(dispatch (success-event-creator %))
-                      #(dispatch (failure-event-creator %))))))
+  http-get)
+
+(reg-fx
+  :http-get-n
+  (fn [calls]
+    (doseq [call calls]
+      (http-get call))))
 
 (reg-fx
   ::init-store
@@ -271,8 +279,7 @@
                    :view-id view
                    :navigation-stack (list view))}
        (when (or (empty? accounts) open-console?)
-         {:dispatch-n (concat [[:init-console-chat]
-                               [:load-commands!]]
+         {:dispatch-n (concat [[:init-console-chat]]
                               (when open-console?
                                 [[:navigate-to :chat console-chat-id]]))})))))
 

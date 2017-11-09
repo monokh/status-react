@@ -4,9 +4,10 @@
             [status-im.utils.handlers :as handlers]
             [status-im.utils.gfycat.core :as gfycat]
             [status-im.chat.models :as model]
-            [status-im.chat.models.unviewed-messages :as unviewed-messages-model]
+            [status-im.chat.models.unviewed-messages :as unviewed-messages-model] 
             [status-im.chat.sign-up :as sign-up]
             [status-im.chat.constants :as chat-const]
+            [status-im.commands.events.loading :as loading-events]
             [status-im.data-store.handler-data :as handler-data]
             [status-im.data-store.messages :as msg-store]
             [status-im.data-store.contacts :as contacts-store]
@@ -177,8 +178,10 @@
 
 (handlers/register-handler-fx
   :init-console-chat
-  (fn [{:keys [db]} _]
-    (init-console-chat db false)))
+  [(re-frame/inject-cofx :get-local-storage-data)]
+  (fn [{:keys [db] :as cofx} _]
+    (let [fx (init-console-chat db false)]
+      (loading-events/load-commands cofx fx sign-up/console-contact))))
 
 (handlers/register-handler-fx
   :initialize-chats
@@ -269,9 +272,7 @@
   [(re-frame/inject-cofx :get-stored-messages)]
   (fn [{:keys [db get-stored-messages]} _]
     (let [current-chat-id (:current-chat-id db)]
-      {:db (assoc-in db [:chats current-chat-id :messages] (get-stored-messages current-chat-id))
-       ;; TODO(janherich): make this dispatch into fn call once commands loading is refactored
-       :dispatch [:load-commands! current-chat-id]})))
+      {:db (assoc-in db [:chats current-chat-id :messages] (get-stored-messages current-chat-id))})))
 
 (defn- jail-init-callback
   [{:keys [db] :as fx} chat-id]
@@ -294,9 +295,7 @@
                      (assoc-in [:chats chat-id :was-opened?] true)
                      (model/set-chat-ui-props {:validation-messages nil})
                      (update-in [:chats chat-id] dissoc :chat-loaded-event))
-             :dispatch-n [[:load-requests! chat-id]]}
-      (not commands-loaded?)
-      (update :dispatch-n conj [:load-commands! chat-id #(re-frame/dispatch [::jail-init-callback chat-id])])
+             :dispatch-n [[:load-requests! chat-id]]} 
 
       commands-loaded?
       (jail-init-callback chat-id)
@@ -370,4 +369,3 @@
   [(re-frame/inject-cofx :get-stored-chat) re-frame/trim-v]
   (fn [cofx [chat]]
     (model/upsert-chat cofx chat)))
-

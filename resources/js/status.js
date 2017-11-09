@@ -8,7 +8,6 @@ var _status_catalog = {
 
 function scopeToBitMask(scope) {
     // this function transforms scopes map to a single integer by generating a bit mask
-    // this similar method also exists on clojure side: status-im.chat.models.commands/scope->bit-mask
     return (scope["global?"] ? 1 : 0) |
         (scope["registered-only?"] ? 2 : 0) |
         (scope["personal-chats?"] ? 4 : 0) |
@@ -69,7 +68,7 @@ Command.prototype.create = function (com) {
 
 Response.prototype = Object.create(Command.prototype);
 Response.prototype.addToCatalog = function () {
-    _status_catalog.responses[[this.name, 0]] = this;
+    _status_catalog.responses[[this.name, this.scope.bitmask]] = this;
 };
 Response.prototype.onReceiveResponse = function (handler) {
     this.onReceive = handler;

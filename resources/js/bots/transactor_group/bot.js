@@ -518,7 +518,7 @@ function shortPreviewSend(params, context) {
 
 var send = {
     name: "send",
-    scope: ["group-chats"],
+    scope: ["group-chats", "global", "registered-only"],
     icon: "money_white",
     color: "#5fc48d",
     title: I18n.t('send_title'),
@@ -553,7 +553,7 @@ var paramsRequest = [
 
 status.command({
     name: "request",
-    scope: ["group-chats"],
+    scope: ["group-chats", "global", "registered-only"],
     color: "#5fc48d",
     title: I18n.t('request_title'),
     description: I18n.t('request_description'),
