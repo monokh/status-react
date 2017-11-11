@@ -7,6 +7,7 @@
             [status-im.utils.utils :as utils]
             [status-im.native-module.core :as status]
             [status-im.data-store.local-storage :as local-storage]
+            [status-im.bots.events :as bots-events]
             [taoensso.timbre :as log]))
 
 ;; COFX
@@ -107,7 +108,7 @@
                                                       (index-by-access-scope-type jail-id :command commands)
                                                       (index-by-access-scope-type jail-id :response responses))))
       (update-in [:contacts/contacts jail-id] assoc
-                 :subscriptions subscriptions
+                 :subscriptions (bots-events/transform-bot-subscriptions subscriptions)
                  :commands-loaded? true)))
 
 (handlers/register-handler-fx

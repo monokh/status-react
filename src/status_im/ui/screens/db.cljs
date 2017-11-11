@@ -165,8 +165,7 @@
                   :chat/confirmation-code-sms-listener
                   :chat/messages
                   :chat/handler-data
-                  :chat/loaded-chats
-                  :chat/bot-subscriptions
+                  :chat/loaded-chats 
                   :chat/new-request
                   :chat/raw-unviewed-messages
                   :chat/bot-db

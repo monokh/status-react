@@ -23,8 +23,7 @@
 (s/def :chat/public-group-topic (s/nilable string?))
 (s/def :chat/confirmation-code-sms-listener (s/nilable any?))               ; .addListener result object
 (s/def :chat/messages (s/nilable seq?))
-(s/def :chat/loaded-chats (s/nilable seq?))
-(s/def :chat/bot-subscriptions (s/nilable map?))
+(s/def :chat/loaded-chats (s/nilable seq?)) 
 (s/def :chat/new-request (s/nilable map?))
 (s/def :chat/raw-unviewed-messages (s/nilable vector?))
 (s/def :chat/bot-db (s/nilable map?))

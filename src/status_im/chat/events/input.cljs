@@ -55,17 +55,14 @@
   and returns new db with up-to date suggestions"
   [{:keys [chats current-chat-id] :as db}]
   (let [chat-text       (str/trim (or (get-in chats [current-chat-id :input-text]) ""))
-        requests        (commands-model/requests-for-chat db current-chat-id) 
+        requests        (commands-model/requests-for-chat db current-chat-id)
         commands        (commands-model/commands-for-chat db current-chat-id)
         {:keys [dapp?]} (get-in db [:contacts/contacts current-chat-id])
         ;; TODO(janherich) surely there is a better place to merge in possible commands/request/subscriptions into current chat
         ;; then in `:update-suggestions` which is called whenever commands for chat are loaded, chat view is opened
         ;; or new message is received from network - it's unnecessary to call it as a response to last two events
-        new-db          (cond-> (-> db
-                                    (update-in [:chats current-chat-id] merge {:possible-commands commands
-                                                                               :possible-requests requests})
-                                    (bots-events/add-active-bot-subscriptions (extract-command-request-owners
-                                                                               commands requests)))
+        new-db          (cond-> (update-in db [:chats current-chat-id] merge {:possible-commands commands
+                                                                              :possible-requests requests})
                           (and dapp?
                                (str/blank? chat-text))
                           (assoc-in [:chats current-chat-id :parameter-boxes :message] nil))]
