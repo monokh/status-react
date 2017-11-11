@@ -129,4 +129,5 @@
       (let [commands-loaded-events (get-in db [:contacts/contacts jail-id :commands-loaded-events])]
         (cond-> {:db (add-jail-result db jail-id result)}
           (seq commands-loaded-events)
-          (assoc :dispatch-n commands-loaded-events))))))
+          (-> (assoc :dispatch-n commands-loaded-events)
+              (update-in [:db :contacts/contacts jail-id] dissoc :commands-loaded-events)))))))
