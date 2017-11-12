@@ -53,16 +53,21 @@
 (defn update-suggestions
   "Update suggestions for current chat input, takes db as the only argument
   and returns new db with up-to date suggestions"
-  [{:keys [chats current-chat-id] :as db}]
-  (let [chat-text       (str/trim (or (get-in chats [current-chat-id :input-text]) ""))
-        requests        (commands-model/requests-for-chat db current-chat-id)
-        commands        (commands-model/commands-for-chat db current-chat-id)
-        {:keys [dapp?]} (get-in db [:contacts/contacts current-chat-id])
+  [{:keys [chats current-chat-id access-scope->commands-responses]
+    :contacts/keys [contacts]
+    :accounts/keys [accounts current-account-id] :as db}]
+  (let [account         (get accounts current-account-id)
+        chat            (get chats current-chat-id)
+        chat-text       (str/trim (or (:input-text chat) ""))
+        requests        (:requests chat)
+        responses       (commands-model/responses-for-chat access-scope->commands-responses account chat contacts requests)
+        commands        (commands-model/commands-for-chat access-scope->commands-responses account chat contacts)
+        {:keys [dapp?]} (get contacts current-chat-id)
         ;; TODO(janherich) surely there is a better place to merge in possible commands/request/subscriptions into current chat
         ;; then in `:update-suggestions` which is called whenever commands for chat are loaded, chat view is opened
         ;; or new message is received from network - it's unnecessary to call it as a response to last two events
         new-db          (cond-> (update-in db [:chats current-chat-id] merge {:possible-commands commands
-                                                                              :possible-requests requests})
+                                                                              :possible-requests responses})
                           (and dapp?
                                (str/blank? chat-text))
                           (assoc-in [:chats current-chat-id :parameter-boxes :message] nil))]

@@ -121,13 +121,12 @@
 
 (defview message-content-command
   [{:keys [message-id content content-type chat-id to from outgoing] :as message}]
-  (letsubs [commands [:get-commands-for-chat chat-id]
+  (letsubs [command [:get-command (:content-command-ref content)]
             current-chat-id [:get-current-chat-id]
             contact-chat [:get-in [:chats (if outgoing to from)]]
             preview [:get-message-preview message-id]]
-    (let [{:keys [command params]} (commands/replace-name-with-request message commands)
-          {:keys     [name type]
-           icon-path :icon} command]
+    (let [{:keys     [name type]
+           icon-path :icon} command] 
       [view st/content-command-view
        (when (:color command)
          [view st/command-container
@@ -140,7 +139,7 @@
           [icon icon-path st/command-image]])
        [command-preview {:command         (:name command)
                          :content-type    content-type
-                         :params          params
+                         :params          (:params content)
                          :outgoing?       outgoing
                          :preview         preview
                          :contact-chat    contact-chat

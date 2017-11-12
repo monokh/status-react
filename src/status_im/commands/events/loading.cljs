@@ -66,50 +66,69 @@
                                                             [::proceed-loading whisper-identity {:error error-response}])}))
     fx))
 
+(defn- add-exclusive-choices [initial-scope exclusive-choices]
+  (reduce (fn [scopes-set [choice-a choice-b]]
+            (reduce (fn [scopes-set scope]
+                      (if (and (scope choice-a)
+                               (scope choice-b))
+                        (-> scopes-set
+                            (disj scope)
+                            (conj (disj scope choice-a)
+                                  (disj scope choice-b)))
+                        scopes-set))
+                    scopes-set
+                    scopes-set))
+          #{initial-scope}
+          exclusive-choices))
+
 (defn- create-access-scopes
   "Based on command owner and command scope, create set of access-scopes which can be used to directly
-  look up any commands/subscriptions relevant for actual context (type of chat opened, registred user
-  or not, any DApps in conversation, etc.)"
-  [jail-id scope-map]
-  (let [clean-scope (into #{}
-                          (comp (filter second) (map first))
-                          (dissoc scope-map :bitmask))
-        final-scope (cond-> clean-scope
-                      (not (:global? clean-scope)) (conj jail-id))] 
-    (if (and (:personal-chats? final-scope)
-             (:group-chats? final-scope))
-      #{(disj final-scope :personal-chats?)
-        (disj final-scope :group-chats?)}
-      #{final-scope})))
+  look up any commands/subscriptions relevant for actual context (type of chat opened, registered user
+  or not, etc.)"
+  [jail-id scope]
+  (let [member-scope (cond-> scope
+                       (not (scope :global)) (conj jail-id))]
+    (add-exclusive-choices member-scope [[:personal-chats :group-chats]
+                                         [:anonymous :registered]])))
 
 (defn- index-by-access-scope-type
-  [init jail-id type items]
-  (reduce (fn [acc [_ {:keys [scope name] :as props}]]
+  [init jail-id items]
+  (reduce (fn [acc {:keys [scope name type ref]}]
             (let [access-scopes (create-access-scopes jail-id scope)]
               (reduce (fn [acc access-scope]
-                        (assoc-in acc [access-scope type name] (-> props
-                                                                   (dissoc :scope)
-                                                                   (assoc :owner-id jail-id
-                                                                          :bot jail-id
-                                                                          :scope-bitmask (:bitmask scope)
-                                                                          :type type))))
+                        (assoc-in acc [access-scope type name] ref))
                       acc
                       access-scopes)))
           init
           items))
 
+(defn- enrich
+  [jail-id type [_ {:keys [scope-bitmask scope name] :as props}]]
+  (-> props 
+      (assoc :scope    (into #{} (map keyword) scope)
+             :owner-id jail-id
+             :bot      jail-id
+             :type     type
+             :ref      [jail-id type scope-bitmask name])))
+
 (defn add-jail-result
   "This function add commands/responses/subscriptions from jail-evaluated resource
   into the database"
   [db jail-id {:keys [commands responses subscriptions]}]
-  (-> db
-      (update :access-scope->commands-responses (fn [acc]
-                                                  (-> (or acc {})
-                                                      (index-by-access-scope-type jail-id :command commands)
-                                                      (index-by-access-scope-type jail-id :response responses))))
-      (update-in [:contacts/contacts jail-id] assoc
-                 :subscriptions (bots-events/transform-bot-subscriptions subscriptions)
-                 :commands-loaded? true)))
+  (let [enriched-commands (map (partial enrich jail-id :command) commands)
+        enriched-responses (map (partial enrich jail-id :response) responses)
+        new-db (reduce (fn [acc {:keys [ref] :as props}]
+                         (assoc-in acc (into [:contacts/contacts] ref) props))
+                       db
+                       (concat enriched-commands enriched-responses))]
+    (-> new-db
+        (update :access-scope->commands-responses (fn [acc]
+                                                    (-> (or acc {})
+                                                        (index-by-access-scope-type jail-id enriched-commands)
+                                                        (index-by-access-scope-type jail-id enriched-responses))))
+        (update-in [:contacts/contacts jail-id] assoc
+                   :subscriptions (bots-events/transform-bot-subscriptions subscriptions)
+                   :jail-loaded? true))))
 
 (handlers/register-handler-fx
   ::evaluate-commands-in-jail
@@ -127,8 +146,8 @@
                                        error])]
         {::show-popup {:title "Error"
                        :msg   message}})
-      (let [commands-loaded-events (get-in db [:contacts/contacts jail-id :commands-loaded-events])]
+      (let [jail-loaded-events (get-in db [:contacts/contacts jail-id :jail-loaded-events])]
         (cond-> {:db (add-jail-result db jail-id result)}
-          (seq commands-loaded-events)
-          (-> (assoc :dispatch-n commands-loaded-events)
-              (update-in [:db :contacts/contacts jail-id] dissoc :commands-loaded-events)))))))
+          (seq jail-loaded-events)
+          (-> (assoc :dispatch-n jail-loaded-events)
+              (update-in [:db :contacts/contacts jail-id] dissoc :jail-loaded-events)))))))

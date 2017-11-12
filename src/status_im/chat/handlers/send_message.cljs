@@ -39,6 +39,7 @@
                                 :type (name (:type command))
                                 :content-command (:name command)
                                 :content-command-scope-bitmask (:scope-bitmask command)
+                                :content-command-ref (:ref command)
                                 :bot (or (:bot command)
                                          (:owner-id command)))]
     {:message-id   id

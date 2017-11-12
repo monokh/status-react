@@ -33,7 +33,7 @@
          :contacts/keys [contacts]} db
         jail-id               (or bot jail-id chat-id)
         jail-command-name     (or content-command-name command-name)]
-    (if (get-in contacts [jail-id :commands-loaded?])
+    (if (get-in contacts [jail-id :jail-loaded?])
       (let [path        [(if (= :response (keyword type)) :responses :commands)
                          [jail-command-name
                           (or scope-bitmask content-command-scope-bitmask)]
@@ -47,7 +47,7 @@
                      :callback-events-creator (fn [jail-response]
                                                 [[::jail-command-data-response
                                                   jail-response message data-type]])}})
-      {:db (update-in db [:contacts/contacts jail-id :commands-loaded-events]
+      {:db (update-in db [:contacts/contacts jail-id :jail-loaded-events]
                       conj [:request-command-message-data message data-type])})))
 
 ;;;; Handlers

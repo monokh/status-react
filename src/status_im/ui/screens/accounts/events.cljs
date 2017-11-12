@@ -25,8 +25,7 @@
   "Takes db and password, creates map of effects describing account creation"
   [db password]
   {:db              (assoc db :accounts/creating-account? true)
-   ::create-account password
-   :dispatch-later  [{:ms 400 :dispatch [:account-generation-message]}]})
+   ::create-account password})
 
 ;;;; COFX
 
@@ -47,7 +46,7 @@
   (fn [account]
     (accounts-store/save account true)))
 
-(defn account-created [result password]
+(defn- account-created [result password]
   (let [data       (json->clj result)
         public-key (:pubkey data)
         address    (:address data)
@@ -64,9 +63,10 @@
                  :photo-path          (identicon public-key)
                  :signing-phrase      phrase}]
     (log/debug "account-created")
-    (when-not (str/blank? public-key)
+    (when-not (str/blank? public-key) 
       (re-frame/dispatch [:show-mnemonic mnemonic phrase])
-      (re-frame/dispatch [:add-account account password]))))
+      (re-frame/dispatch [:add-account account password])
+      (re-frame/dispatch [:account-generation-message]))))
 
 (re-frame/reg-fx
   ::create-account

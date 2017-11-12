@@ -289,7 +289,7 @@
   [{:keys [db get-stored-messages]} chat-id]
   (let [messages (get-in db [:chats chat-id :messages])
         chat-loaded-event (get-in db [:chats chat-id :chat-loaded-event])
-        commands-loaded? (get-in db [:contacts/contacts chat-id :commands-loaded?])]
+        jail-loaded? (get-in db [:contacts/contacts chat-id :jail-loaded?])]
     (cond-> {:db (-> db
                      (assoc :current-chat-id chat-id)
                      (assoc-in [:chats chat-id :was-opened?] true)
@@ -297,7 +297,7 @@
                      (update-in [:chats chat-id] dissoc :chat-loaded-event))
              :dispatch-n [[:load-requests! chat-id]]} 
 
-      commands-loaded?
+      jail-loaded?
       (jail-init-callback chat-id)
       ;; TODO(janherich): what's the purpose of the second term in AND ?
       (and (seq messages)

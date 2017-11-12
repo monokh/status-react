@@ -47,6 +47,13 @@
          (filter #(or (str/includes? (chat-utils/command-name %) (or text "")))))))
 
 (reg-sub
+  :get-current-chat
+  :<- [:chats]
+  :<- [:get-current-chat-id]
+  (fn [[chats id]]
+    (get chats id)))
+
+(reg-sub
   :chat
   :<- [:chats]
   :<- [:get-current-chat-id]
@@ -61,7 +68,7 @@
     (vals (merge commands-map requests-map))))
 
 (reg-sub
- :get-suggested-commands
+ :get-available-commands-responses
  :<- [:chat :possible-commands]
  :<- [:chat :possible-requests]
  get-suggested-commands)
@@ -77,8 +84,12 @@
     (chats/get-by-id chat-id)))
 
 (reg-sub :get-commands-for-chat
-  (fn [db [_ chat-id]]
-    (commands-model/commands-for-chat db chat-id)))
+  :<- [:get-commands-responses-by-access-scope] 
+  :<- [:get-current-account]
+  :<- [:get-current-chat]
+  :<- [:get-contacts]
+  (fn [[commands-responses account chat contacts]] 
+    (commands-model/commands-for-chat commands-responses account chat contacts)))
 
 (reg-sub
   :selected-chat-command
@@ -142,11 +153,6 @@
            (not (:command @selected-command))
            (or (not-empty @requests)
                (not-empty @commands))))))
-
-(reg-sub :get-current-chat
-  (fn [db]
-    (let [current-chat-id (:current-chat-id db)]
-      (get-in db [:chats current-chat-id]))))
 
 (reg-sub :get-chat
   (fn [db [_ chat-id]]

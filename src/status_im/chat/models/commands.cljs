@@ -4,50 +4,59 @@
             [clojure.string :as str]
             [taoensso.timbre :as log]))
 
-(defn- commands-responses-for-chat
+(defn- resolve-references
+  [contacts name->ref]
+  (reduce-kv (fn [acc name ref]
+               (assoc acc name (get-in contacts ref)))
+             {}
+             name->ref))
+
+(defn commands-responses
   "Returns map of commands/responses eligible for current chat."
-  [type
-   {:keys          [access-scope->commands-responses chats]
-    :contacts/keys [contacts]
-    :accounts/keys [accounts current-account-id]}
-   chat-id]
-  (let [{:keys [address]}           (get accounts current-account-id)
-        {chat-contacts :contacts
-         group-chat    :group-chat} (get chats chat-id)
-        dapps-only-chat?            (every? (fn [{:keys [identity]}]
-                                              (get-in contacts [identity :dapp?]))
-                                            chat-contacts)
+  [type access-scope->commands-responses {:keys [address]} {:keys [contacts group-chat]} all-contacts]
+  (let [bots-only?         (every? (fn [{:keys [identity]}]
+                                     (get-in all-contacts [identity :dapp?]))
+                                   contacts)
         basic-access-scope (cond-> #{}
-                             group-chat (conj :group-chats?)
-                             (not group-chat) (conj :personal-chats?)
-                             address (conj :registered-only?)
-                             dapps-only-chat? (conj :can-use-for-dapps?))
-        global-access-scope (conj basic-access-scope :global?)
+                             group-chat (conj :group-chats)
+                             (not group-chat) (conj :personal-chats)
+                             address (conj :registered)
+                             (not address) (conj :anonymous)
+                             (not bots-only?) (conj :not-for-bots))
+        global-access-scope (conj basic-access-scope :global)
         member-access-scopes (into #{} (map (comp (partial conj basic-access-scope) :identity))
-                                   chat-contacts)]
+                                   contacts)]
     (reduce (fn [acc access-scope]
-              (merge acc (get-in access-scope->commands-responses [access-scope type])))
+              (merge acc (resolve-references all-contacts
+                                             (get-in access-scope->commands-responses [access-scope type]))))
             {}
             (cons global-access-scope member-access-scopes))))
 
-(defn- commands-for-chat
-  "Returns sorted list of commands eligible for current chat"
-  [db chat-id]
-  (->> chat-id
-       (commands-responses-for-chat :command db)
-       (sort-by first)
-       (map second)))
+(def ^:private map->sorted-seq (comp (partial map second) (partial sort-by first)))
 
-(defn- requests-for-chat
-  "Returns sorted list of request eligible for current chat"
-  [db chat-id]
-  (let [requests     (get-in db [:chats chat-id :requests])
-        response-map (commands-responses-for-chat :response db chat-id)]
-    (->> requests
-         (map (comp name :type))
-         (select-keys response-map)
-         (sort-by first)
-         (map second))))
+(defn commands-for-chat
+  "Returns sorted list of commands eligible for current chat."
+  [access-scope->commands-responses account chat contacts]
+  (map->sorted-seq (commands-responses :command access-scope->commands-responses account chat contacts)))
+
+(defn- requested-responses
+  "Returns map of requested command responses eligible for current chat."
+  [access-scope->commands-responses account chat contacts requests]
+  (let [requested-responses (map (comp name :type) requests)
+        responses-map (commands-responses :response access-scope->commands-responses account chat contacts)]
+    (select-keys responses-map requested-responses)))
+
+(defn responses-for-chat
+  "Returns sorted list of requested command responses eligible for current chat."
+  [access-scope->commands-responses account chat contacts requests]
+  (map->sorted-seq (requested-responses access-scope->commands-responses account chat contacts requests)))
+
+(defn commands-responses-for-chat
+  "Returns sorted list of commands and requested command responses eligible for current chat."
+  [access-scope->commands-responses account chat contacts requests]
+  (let [commands-map (commands-responses :command access-scope->commands-responses account chat contacts)
+        responses-map (requested-responses access-scope->commands-responses account chat contacts requests)]
+    (map->sorted-seq (merge commands-map responses-map))))
 
 (defn- commands-list->map [commands]
   (->> commands
